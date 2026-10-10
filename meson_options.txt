@@ -1,0 +1,10 @@
+option('tod', type: 'feature', value: 'auto',
+  description: 'libfprint TOD driver module for fprintd')
+option('cli', type: 'feature', value: 'auto',
+  description: 'verimark-cli diagnostic tool (needs libusb-1.0)')
+option('pairing_dir', type: 'string', value: '/var/lib/fprint/verimark',
+  description: 'Where the host/sensor pairing secrets are stored')
+option('auto_repair', type: 'boolean', value: true,
+  description: 'TOD driver pairs again when the sensor rejects the stored pairing (e.g. after Windows paired the key); false: only verimark-cli pair does')
+option('tod_driversdir', type: 'string', value: '',
+  description: 'TOD module directory (default: from libfprint-2-tod-1.pc)')
