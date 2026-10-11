@@ -26,7 +26,7 @@
 #include <string.h>
 #include <time.h>
 
-#define VERIMARK_ENROLL_STAGES 7   /* sensor reports progress in steps of 100/7 */
+#define VERIMARK_ENROLL_STAGES 7   /* accepted scans; the sensor reports 0..100% */
 #define VERIMARK_IFACE         1   /* interface 0 is the FIDO HID */
 #define VERIMARK_INTR_EP       0x83
 
@@ -154,8 +154,9 @@ vmk_error (int r)
       return fpi_device_error_new (FP_DEVICE_ERROR_DATA_NOT_FOUND);
     case VMK_E_FULL:
       return fpi_device_error_new (FP_DEVICE_ERROR_DATA_FULL);
+    /* A refused command (VMK_E_STATUS) is GENERAL: fprintd reports PROTO as
+     * enroll-disconnected, which clients such as Fingwit do not handle. */
     case VMK_E_PROTO:
-    case VMK_E_STATUS:
     case VMK_E_CRYPTO:
       return fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO, "%s", vmk_strerror (r));
     case VMK_E_UNSUPPORTED:
@@ -642,12 +643,21 @@ enroll_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancel
         }
       if (st.progress == 100 && st.failed)
         {
+          g_warning ("the sensor marked the enrollment as failed (quality %u)", st.quality);
           r = VMK_E_STATUS;
           break;
         }
-      stage = MIN ((st.progress * VERIMARK_ENROLL_STAGES + 50) / 100, VERIMARK_ENROLL_STAGES);
+      /* The sensor decides how many touches it needs (7 accepted scans of
+       * 14% when observed). Clients count the enroll-stage-passed
+       * signals, and fprintd drops a stage >= nr_enroll_stages, so every
+       * accepted scan advances the stage by at least one and the last stage
+       * is held back for the finished print. */
       if (st.progress < 100)
-        post_report (self, REPORT_ENROLL_STAGE, stage, NULL, NULL);
+        {
+          stage = MAX (stage + 1, st.progress * VERIMARK_ENROLL_STAGES / 100);
+          stage = MIN (stage, VERIMARK_ENROLL_STAGES - 1);
+          post_report (self, REPORT_ENROLL_STAGE, stage, NULL, NULL);
+        }
     }
 
   if (!r)

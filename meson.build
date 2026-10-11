@@ -1,5 +1,5 @@
 project('verimark-linux', 'c',
-  version: '0.1.0',
+  version: '0.1.1',
   license: 'LGPL-2.1-or-later',
   meson_version: '>= 0.60',
   default_options: ['c_std=gnu11', 'warning_level=2', 'buildtype=debugoptimized'])

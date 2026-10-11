@@ -1,3 +1,14 @@
+verimark-linux (0.1.1) noble; urgency=medium
+
+  * Report a command the sensor refuses as a general error instead of a
+    protocol error. fprintd turned the latter into enroll-disconnected,
+    which Fingwit ignores, so a failed enrollment looked stuck at the last
+    scan.
+  * Log why an enrollment failed (sensor verdict or commit status).
+  * Never report the last enroll stage before the sensor finishes.
+
+ -- TheDuffman85 <benjamin.tausend@googlemail.com>  Sun, 11 Oct 2026 20:05:24 +0200
+
 verimark-linux (0.1.0) noble; urgency=medium
 
   * Initial release.

@@ -419,6 +419,7 @@ int
 vmk_enroll_commit (vmk_dev *dev, const uint8_t *payload, size_t payload_len)
 {
   uint8_t *cmd;
+  uint16_t st = 0;
   int r;
 
   if (payload_len > 0x400)
@@ -430,8 +431,10 @@ vmk_enroll_commit (vmk_dev *dev, const uint8_t *payload, size_t payload_len)
   put_le32 (cmd + 9, (uint32_t) payload_len);
   if (payload_len)
     memcpy (cmd + 0xd, payload, payload_len);
-  r = cmd_simple (dev, cmd, payload_len + 0xd, NULL, 10000);
+  r = cmd_simple (dev, cmd, payload_len + 0xd, &st, 10000);
   free (cmd);
+  if (r == VMK_E_STATUS)
+    VMK_WARN ("enroll commit failed with status 0x%04x", st);
   return r;
 }
 
