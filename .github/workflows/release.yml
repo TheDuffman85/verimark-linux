@@ -1,0 +1,117 @@
+# Builds the Debian packages, runs the tests and publishes a GitHub release.
+#
+# Push a tag named after the version (e.g. 0.1.0), or run the workflow
+# manually: it then tags the selected commit with the version from
+# meson.build, and fails if that tag already exists.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dpkg-dev
+          sudo apt-get build-dep -y ./
+
+      - name: Determine version
+        id: version
+        run: |
+          version=$(meson introspect --projectinfo meson.build | jq -r .version)
+          deb_version=$(dpkg-parsechangelog -S Version)
+          if [ "$deb_version" != "$version" ]; then
+            echo "::error::debian/changelog has version $deb_version, meson.build has $version"
+            exit 1
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            if [ "$GITHUB_REF_NAME" != "$version" ]; then
+              echo "::error::tag $GITHUB_REF_NAME does not match version $version"
+              exit 1
+            fi
+          else
+            rc=0
+            git ls-remote --exit-code --tags origin "refs/tags/$version" >/dev/null || rc=$?
+            case $rc in
+              0) echo "::error::tag $version already exists"; exit 1 ;;
+              2) ;;
+              *) echo "::error::could not list the remote tags"; exit 1 ;;
+            esac
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # dh_auto_test runs the meson tests and prints their log on failure
+      - name: Build and test packages
+        run: |
+          dpkg-buildpackage -us -uc -b
+          mkdir dist
+          mv ../verimark-driver_*.deb ../verimark-cli_*.deb dist/
+
+      - name: Test package installation
+        run: |
+          sudo apt-get install -y ./dist/verimark-driver_*.deb ./dist/verimark-cli_*.deb
+          module=$(dpkg -L verimark-driver | grep '/libfprint-tod-verimark\.so$')
+          if ldd "$module" | grep 'not found'; then
+            exit 1
+          fi
+          out=$(verimark-cli 2>&1 || true)
+          grep -q '^usage:' <<< "$out"
+          sudo apt-get purge -y verimark-driver verimark-cli
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: debs
+          path: dist/*.deb
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: debs
+          path: dist
+
+      # Refs created with GITHUB_TOKEN do not trigger this workflow again.
+      # Fails if the tag was created since the build job checked.
+      - name: Create tag
+        if: github.event_name == 'workflow_dispatch'
+        run: gh api "repos/$GH_REPO/git/refs" -f ref="refs/tags/$VERSION" -f sha="$GITHUB_SHA"
+
+      - name: Create release
+        run: |
+          gh release create "$VERSION" dist/*.deb \
+            --verify-tag \
+            --title "$VERSION" \
+            --generate-notes \
+            --notes "Packages for Ubuntu 24.04 / Linux Mint 22 (amd64):
+
+          \`\`\`sh
+          sudo apt install ./verimark-driver_${VERSION}_amd64.deb ./verimark-cli_${VERSION}_amd64.deb
+          \`\`\`"

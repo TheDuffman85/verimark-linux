@@ -1,0 +1,44 @@
+Source: verimark-linux
+Section: libs
+Priority: optional
+Maintainer: TheDuffman85 <benjamin.tausend@googlemail.com>
+Build-Depends: debhelper-compat (= 13),
+               meson,
+               ninja-build,
+               pkgconf,
+               libssl-dev,
+               libusb-1.0-0-dev,
+               libfprint-2-tod-dev,
+               libfprint-2-dev,
+               libgusb-dev,
+               libglib2.0-dev
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: verimark-driver
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: fprintd
+Suggests: verimark-cli, libpam-fprintd
+Description: libfprint TOD driver for the Kensington VeriMark Desktop
+ libfprint "touch OEM driver" module for the Kensington VeriMark Desktop
+ fingerprint key (K62330WW, USB 047d:00f2), a Synaptics match-in-sensor
+ device. It makes the sensor usable with fprintd, desktop login and
+ pam_fprintd.
+ .
+ On first use the driver pairs the host with the sensor and keeps the
+ pairing secret in /var/lib/fprint/verimark.
+
+Package: verimark-cli
+Section: utils
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Suggests: verimark-driver
+Description: diagnostic tool for the Kensington VeriMark Desktop
+ Talks to the Kensington VeriMark Desktop fingerprint key without fprintd:
+ shows firmware and pairing information, lists and erases enrollments,
+ pairs the host with the sensor and logs finger events.
+ .
+ It shares the pairing in /var/lib/fprint/verimark with the libfprint
+ TOD driver. Stop fprintd before using it.

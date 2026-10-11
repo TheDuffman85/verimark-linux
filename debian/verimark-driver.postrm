@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "remove" ] && [ -d /run/systemd/system ]; then
+	systemctl try-restart fprintd.service >/dev/null 2>&1 || true
+fi
+
+# The pairing secrets; the driver pairs again when it is reinstalled.
+if [ "$1" = "purge" ]; then
+	rm -rf /var/lib/fprint/verimark
+fi
+
+#DEBHELPER#
+
+exit 0

@@ -18,7 +18,19 @@ The protocol was reconstructed from the Windows driver
 | `cli/verimark-cli.c` | diagnostic tool that talks to the sensor without fprintd |
 | `tests/` | offline TLS and session-policy tests, and a libfprint hardware harness |
 
-## Build and install (Ubuntu 24.04 / Linux Mint 22)
+## Supported systems
+
+The driver is a libfprint TOD ("touch OEM driver") module, so it needs a
+libfprint built with TOD support (`libfprint-2-tod1`). TOD is not part of
+upstream libfprint; it is a separate branch that Ubuntu and Debian ship.
+
+- **Ubuntu 24.04 and Linux Mint 22 (amd64)**: tested. The release packages
+  are built on Ubuntu 24.04.
+- **Other Debian and Ubuntu based distributions**: should work when built
+  from source, with the same package names. The release packages may not
+  install on other releases. Not tested.
+
+## Build and install
 
 ```sh
 sudo apt install build-essential meson ninja-build pkg-config \
@@ -30,11 +42,31 @@ sudo meson install -C build
 sudo systemctl restart fprintd
 ```
 
-This installs `libfprint-tod-verimark.so` into
-`/usr/lib/x86_64-linux-gnu/libfprint-2/tod-1/` and `verimark-cli` into
-`/usr/local/sbin`. Then enroll with `fprintd-enroll` or the desktop settings.
+This installs `libfprint-tod-verimark.so` into the TOD driver directory
+(`/usr/lib/x86_64-linux-gnu/libfprint-2/tod-1/` on Ubuntu amd64) and
+`verimark-cli` into `/usr/local/sbin`. Then enroll with `fprintd-enroll` or the desktop settings.
 
 No udev rule is needed: fprintd runs as root.
+
+## Debian package
+
+```sh
+sudo apt install debhelper dpkg-dev
+dpkg-buildpackage -us -uc -b
+sudo apt install ../verimark-driver_*.deb ../verimark-cli_*.deb
+```
+
+`verimark-driver` holds the TOD module and restarts fprintd when it
+is installed or removed; `verimark-cli` holds the diagnostic tool, in
+`/usr/sbin`. Purging the driver package (`apt purge`) deletes the pairing
+secrets in `/var/lib/fprint/verimark`. If you installed with
+`meson install` before, remove `/usr/local/sbin/verimark-cli` first, since
+it would shadow the packaged one.
+
+To release, set the new version in `meson.build` and `debian/changelog`, then
+push a tag named after it (`git tag 0.2.0 && git push origin 0.2.0`) or run
+the Release workflow on GitHub, which creates the tag. The workflow builds and
+tests the packages and attaches them to a GitHub release.
 
 ## Pairing
 
