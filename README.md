@@ -63,7 +63,25 @@ secrets in `/var/lib/fprint/verimark`. If you installed with
 `meson install` before, remove `/usr/local/sbin/verimark-cli` first, since
 it would shadow the packaged one.
 
-To release, set the new version in `meson.build` and `debian/changelog`, then
+## Arch Linux / CachyOS
+
+The AUR package `libfprint-2-tod1-verimark` holds the TOD module and
+`verimark-cli` (in `/usr/bin`). It needs `libfprint-tod` from the AUR, which
+replaces `libfprint` with a TOD-enabled build; `fprintd` keeps working with it.
+
+```sh
+paru -S libfprint-2-tod1-verimark   # or yay
+```
+
+The PKGBUILD is in `aur/`. To build it there with `makepkg -si`, install
+`libfprint-tod` from the AUR first, since makepkg cannot fetch AUR
+dependencies. Removing the package keeps the pairing secrets in
+`/var/lib/fprint/verimark`.
+
+## Releasing
+
+To release, set the new version in `meson.build`, `debian/changelog` and
+`pkgver` in `aur/PKGBUILD` (update `sha256sums` and `.SRCINFO` after tagging), then
 push a tag named after it (`git tag 0.2.0 && git push origin 0.2.0`) or run
 the Release workflow on GitHub, which creates the tag. The workflow builds and
 tests the packages and attaches them to a GitHub release.

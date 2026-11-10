@@ -1,0 +1,24 @@
+# fprintd loads TOD modules when it starts
+
+_restart_fprintd() {
+  if [ -d /run/systemd/system ]; then
+    systemctl try-restart fprintd.service >/dev/null 2>&1 || true
+  fi
+}
+
+post_install() {
+  _restart_fprintd
+  echo ">>> Enroll a finger with 'fprintd-enroll' or the desktop settings."
+  echo ">>> To log in or use sudo with the fingerprint, enable pam_fprintd:"
+  echo ">>> https://wiki.archlinux.org/title/Fprint"
+}
+
+post_upgrade() {
+  _restart_fprintd
+}
+
+post_remove() {
+  _restart_fprintd
+  echo ">>> The pairing secrets in /var/lib/fprint/verimark were kept."
+  echo ">>> Delete that directory if you do not reinstall the driver."
+}

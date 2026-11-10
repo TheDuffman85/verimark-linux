@@ -1,0 +1,42 @@
+# Maintainer: TheDuffman85
+
+pkgname=libfprint-2-tod1-verimark
+_name=verimark-linux
+pkgver=0.1.1
+pkgrel=1
+pkgdesc="libfprint TOD driver and diagnostic tool for the Kensington VeriMark Desktop fingerprint key (047d:00f2)"
+arch=(x86_64)
+url="https://github.com/TheDuffman85/verimark-linux"
+license=(LGPL-2.1-or-later)
+depends=(
+  fprintd
+  glib2
+  glibc
+  libfprint-tod
+  libgcc
+  libgusb
+  libusb
+  openssl
+)
+makedepends=(
+  meson
+  ninja
+)
+install=$pkgname.install
+source=("$_name-$pkgver.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz")
+sha256sums=('28a049510637813aab2e8869da71d2d7a7697728d202e7eba130427aaf2ebb78')
+
+build() {
+  arch-meson "$_name-$pkgver" build \
+    -D tod=enabled \
+    -D cli=enabled
+  meson compile -C build
+}
+
+check() {
+  meson test -C build --print-errorlogs
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+}
